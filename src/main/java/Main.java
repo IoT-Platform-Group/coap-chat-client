@@ -6,32 +6,30 @@ import org.eclipse.californium.core.coap.MediaTypeRegistry;
 
 import java.time.Clock;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 
 public abstract class Main {
-    public static void main(String[] args) throws InterruptedException {
-        int count = 1;
-        CountDownLatch countDown = new CountDownLatch(count);
-        long start = Clock.systemUTC().millis();
+    public static void main(String[] args) {
+
         CoapClient client = new CoapClient("coap://127.0.0.1:5683/chat/receive?target_user=hdl&message=My+name+is+van!");
-        for (int i = 0; i < count; i++) {
-            client.post(new CoapHandler() {
+        CoapResponse postResponse = client.post("message", MediaTypeRegistry.TEXT_PLAIN);
 
-                @Override
-                public void onLoad(CoapResponse response) {
-                    System.out.println(Utils.prettyPrint(response));
-                    System.out.println(response.isSuccess());
-                    countDown.countDown();
-                }
+        System.out.println(Utils.prettyPrint(postResponse));
+        System.out.println(postResponse.isSuccess());
 
-                @Override
-                public void onError() {
+        CoapClient obsClient = new CoapClient("coap://127.0.0.1:5683/obs");
+        Executors.newSingleThreadExecutor().execute(() ->
+                obsClient.observe(new CoapHandler() {
+                    @Override
+                    public void onLoad(CoapResponse coapResponse) {
+                        System.out.println(Utils.prettyPrint(coapResponse));
+                    }
 
-                }
-            }, "message", MediaTypeRegistry.TEXT_PLAIN);
-        }
-        countDown.await();
-        long end = Clock.systemUTC().millis();
-        System.out.println(end - start);
-
+                    @Override
+                    public void onError() {
+                        System.out.println("Error");
+                    }
+                })
+        );
     }
 }
