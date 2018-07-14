@@ -12,14 +12,14 @@ public abstract class Main {
         int count = 1;
         CountDownLatch countDown = new CountDownLatch(count);
         long start = Clock.systemUTC().millis();
-        CoapClient client = new CoapClient("coap://127.0.0.1:5683/test?fucks=233");
+        CoapClient client = new CoapClient("coap://127.0.0.1:5683/chat/receive?target_user=hdl&message=My+name+is+van!");
         for (int i = 0; i < count; i++) {
-
-            client.get(new CoapHandler() {
+            client.post(new CoapHandler() {
 
                 @Override
                 public void onLoad(CoapResponse response) {
                     System.out.println(Utils.prettyPrint(response));
+                    System.out.println(response.isSuccess());
                     countDown.countDown();
                 }
 
@@ -27,7 +27,7 @@ public abstract class Main {
                 public void onError() {
 
                 }
-            }, MediaTypeRegistry.TEXT_PLAIN);
+            }, "message", MediaTypeRegistry.TEXT_PLAIN);
         }
         countDown.await();
         long end = Clock.systemUTC().millis();
