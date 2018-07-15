@@ -7,7 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class Main {
-    private static final String username = "HansBug";
+    private static final String username = "hansbug";
 
     private static final Object lockObject = new Object();
 
