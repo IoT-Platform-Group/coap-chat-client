@@ -1,37 +1,46 @@
-import org.eclipse.californium.core.CoapClient;
-import org.eclipse.californium.core.CoapHandler;
-import org.eclipse.californium.core.CoapResponse;
-import org.eclipse.californium.core.Utils;
+import org.eclipse.californium.core.*;
 import org.eclipse.californium.core.coap.MediaTypeRegistry;
 
-import java.time.Clock;
-import java.util.concurrent.CountDownLatch;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class Main {
+    private static final String username = "HansBug";
+
     public static void main(String[] args) throws InterruptedException {
-        int count = 1;
-        CountDownLatch countDown = new CountDownLatch(count);
-        long start = Clock.systemUTC().millis();
-        CoapClient client = new CoapClient("coap://127.0.0.1:5683/chat/receive?target_user=hdl&message=My+name+is+van!");
-        for (int i = 0; i < count; i++) {
-            client.post(new CoapHandler() {
+        CoapClient clientObs = new CoapClient(String.format("coap://127.0.0.1:5683/test/obs?username=%s", username));
+        Thread thread = new Thread() {
+            @Override
+            public void run() {
+                clientObs.observe(new CoapHandler() {
+                    @Override
+                    public void onLoad(CoapResponse coapResponse) {
+                        System.out.println(coapResponse);
+                    }
 
-                @Override
-                public void onLoad(CoapResponse response) {
-                    System.out.println(Utils.prettyPrint(response));
-                    System.out.println(response.isSuccess());
-                    countDown.countDown();
-                }
+                    @Override
+                    public void onError() {
 
-                @Override
-                public void onError() {
+                    }
+                }, MediaTypeRegistry.TEXT_PLAIN);
+            }
+        };
+        thread.start();
+        Scanner scanner = new Scanner(System.in);
+        Pattern pattern = Pattern.compile("^\\s*(?<target>[a-z0-9A-Z_]+)\\s*:\\s*(?<message>[\\s\\S]*?)\\s*$");
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            Matcher matcher = pattern.matcher(line);
+            if (matcher.find()) {
+                String target = matcher.group("target");
+                String message = matcher.group("message");
 
-                }
-            }, "message", MediaTypeRegistry.TEXT_PLAIN);
+            } else {
+                System.err.println(String.format("Invalid line : [%s]", line));
+            }
         }
-        countDown.await();
-        long end = Clock.systemUTC().millis();
-        System.out.println(end - start);
 
+        scanner.close();
     }
 }
