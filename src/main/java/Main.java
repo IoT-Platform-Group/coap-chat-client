@@ -1,35 +1,78 @@
-import org.eclipse.californium.core.CoapClient;
-import org.eclipse.californium.core.CoapHandler;
-import org.eclipse.californium.core.CoapResponse;
-import org.eclipse.californium.core.Utils;
+import org.eclipse.californium.core.*;
 import org.eclipse.californium.core.coap.MediaTypeRegistry;
 
-import java.time.Clock;
-import java.util.concurrent.CountDownLatch;
+import java.util.Scanner;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class Main {
-    public static void main(String[] args) {
+    private static final String username = "HansBug";
 
-        CoapClient client = new CoapClient("coap://127.0.0.1:5683/chat/receive?target_user=hdl&message=My+name+is+van!");
-        CoapResponse postResponse = client.post("message", MediaTypeRegistry.TEXT_PLAIN);
+    private static final Object lockObject = new Object();
 
-        System.out.println(Utils.prettyPrint(postResponse));
-        System.out.println(postResponse.isSuccess());
+    public static void main(String[] args) throws InterruptedException {
+        CoapClient clientObs = new CoapClient(String.format("coap://127.0.0.1:5683/chat/obs?user=%s", username));
 
-        CoapClient obsClient = new CoapClient("coap://127.0.0.1:5683/obs");
-        Executors.newSingleThreadExecutor().execute(() ->
-                obsClient.observe(new CoapHandler() {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            clientObs.observe(new CoapHandler() {
+                @Override
+                public void onLoad(CoapResponse coapResponse) {
+                    System.out.println("f?");
+                    synchronized (lockObject) {
+                        lockObject.notifyAll();
+                    }
+
+                    if (coapResponse.isSuccess()) {
+                        System.out.println(coapResponse.getResponseText());
+                    }
+                }
+
+                @Override
+                public void onError() {
+
+                }
+            }, MediaTypeRegistry.TEXT_PLAIN);
+        });
+        synchronized (lockObject) {
+            lockObject.wait();
+        }
+        System.out.println("Connection complete!");
+
+        Scanner scanner = new Scanner(System.in);
+        Pattern pattern = Pattern.compile("^\\s*(?<target>[a-z0-9A-Z_]+)\\s*:\\s*(?<message>[\\s\\S]*?)\\s*$");
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            if ("quit".equals(line)) {
+                clientObs.shutdown();
+                System.exit(0);
+            }
+            Matcher matcher = pattern.matcher(line);
+            if (matcher.find()) {
+                String target = matcher.group("target");
+                String message = matcher.group("message");
+                CoapClient sendClient = new CoapClient(String.format("coap://127.0.0.1:5683/chat/send?user=%s", target));
+                sendClient.post(new CoapHandler() {
                     @Override
                     public void onLoad(CoapResponse coapResponse) {
-                        System.out.println(Utils.prettyPrint(coapResponse));
+                        if (coapResponse.isSuccess()) {
+                            System.out.println(String.format("Message \"%s\" send success!", message));
+                        } else {
+                            System.err.println(String.format("Message \"%s\" send failed!", message));
+                        }
                     }
 
                     @Override
                     public void onError() {
-                        System.out.println("Error");
+                        System.err.println(String.format("Error occurred when sending message \"%s\"!", message));
                     }
-                })
-        );
+                }, message, MediaTypeRegistry.TEXT_PLAIN);
+                sendClient.shutdown();
+            } else {
+                System.err.println(String.format("Invalid line : [%s]", line));
+            }
+        }
+
+        scanner.close();
     }
 }
