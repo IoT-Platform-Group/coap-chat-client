@@ -18,7 +18,7 @@ public abstract class Main {
             clientObs.observe(new CoapHandler() {
                 @Override
                 public void onLoad(CoapResponse coapResponse) {
-                    System.out.println("fuck");
+                    System.out.println("f?");
                     synchronized (lockObject) {
                         lockObject.notifyAll();
                     }
@@ -43,6 +43,10 @@ public abstract class Main {
         Pattern pattern = Pattern.compile("^\\s*(?<target>[a-z0-9A-Z_]+)\\s*:\\s*(?<message>[\\s\\S]*?)\\s*$");
         while (scanner.hasNextLine()) {
             String line = scanner.nextLine();
+            if ("quit".equals(line)) {
+                clientObs.shutdown();
+                System.exit(0);
+            }
             Matcher matcher = pattern.matcher(line);
             if (matcher.find()) {
                 String target = matcher.group("target");
@@ -63,6 +67,7 @@ public abstract class Main {
                         System.err.println(String.format("Error occurred when sending message \"%s\"!", message));
                     }
                 }, message, MediaTypeRegistry.TEXT_PLAIN);
+                sendClient.shutdown();
             } else {
                 System.err.println(String.format("Invalid line : [%s]", line));
             }
