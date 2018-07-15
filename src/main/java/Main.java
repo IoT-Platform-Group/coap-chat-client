@@ -7,7 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class Main {
-    private static final String username = "HansBug";
+    private static final String username = "hansbug";
 
     private static final Object lockObject = new Object();
 
@@ -19,6 +19,7 @@ public abstract class Main {
                 @Override
                 public void onLoad(CoapResponse coapResponse) {
                     System.out.println("f?");
+                    System.out.println(Utils.prettyPrint(coapResponse));
                     synchronized (lockObject) {
                         lockObject.notifyAll();
                     }
@@ -57,6 +58,7 @@ public abstract class Main {
                     public void onLoad(CoapResponse coapResponse) {
                         if (coapResponse.isSuccess()) {
                             System.out.println(String.format("Message \"%s\" send success!", message));
+                            System.out.println(coapResponse.getResponseText());
                         } else {
                             System.err.println(String.format("Message \"%s\" send failed!", message));
                         }
