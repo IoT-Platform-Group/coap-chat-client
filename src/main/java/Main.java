@@ -9,8 +9,6 @@ import java.util.regex.Pattern;
 public abstract class Main {
     private static final String username = "HansBug";
 
-    private static final Object lockObject = new Object();
-
     public static void main(String[] args) throws InterruptedException {
         CoapClient clientObs = new CoapClient(String.format("coap://127.0.0.1:5683/chat/obs?user=%s", username));
 
@@ -18,14 +16,7 @@ public abstract class Main {
             clientObs.observe(new CoapHandler() {
                 @Override
                 public void onLoad(CoapResponse coapResponse) {
-                    System.out.println("f?");
-                    synchronized (lockObject) {
-                        lockObject.notifyAll();
-                    }
-
-                    if (coapResponse.isSuccess()) {
-                        System.out.println(coapResponse.getResponseText());
-                    }
+                    System.out.println(coapResponse.getResponseText());
                 }
 
                 @Override
@@ -34,10 +25,6 @@ public abstract class Main {
                 }
             }, MediaTypeRegistry.TEXT_PLAIN);
         });
-        synchronized (lockObject) {
-            lockObject.wait();
-        }
-        System.out.println("Connection complete!");
 
         Scanner scanner = new Scanner(System.in);
         Pattern pattern = Pattern.compile("^\\s*(?<target>[a-z0-9A-Z_]+)\\s*:\\s*(?<message>[\\s\\S]*?)\\s*$");
